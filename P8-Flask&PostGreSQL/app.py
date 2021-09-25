@@ -1,10 +1,20 @@
 from flask import Flask, render_template, request
+from flask_sqlalchemy import SQLAlchemy
+from send_email import send_email
+from sqlalchemy.sql import func
 
 app = Flask(__name__)
-
-class Data:
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost/height_collector'
+db = SQLAlchemy(app)
+class Data(db.Model):
+    __tablename__ = "data"
+    id = db.Column(db.Integer, primary_key=True)
+    email_ = db.Column(db.String(100), unique=True)
+    height_ = db.Column(db.Integer)
     
-
+    def __init__(self, email_, height_) -> None:
+        self.email_ = email_
+        self.height_ = height_
 
 @app.route("/")
 def index():
@@ -15,7 +25,17 @@ def success():
     if request.method == 'POST':
         email = request.form["email_name"]
         height = request.form["height_name"]
-    return render_template("success.html")
+        
+        if db.session.query(Data).filter(Data.email_ == email).count()==0:
+            data = Data(email, height)
+            db.session.add(data)
+            db.session.commit()
+            average_height = round(db.session.query(func.avg(Data.height_)).scalar(),1)
+            count = db.session.query(Data.height_).count()
+            send_email(email,height,average_height,count)
+            return render_template("success.html")
+    return render_template('index.html', 
+                           text="The same email address exists in our database. Please provide a new email address.")
 
 if __name__=='__main__':
     app.debug=True

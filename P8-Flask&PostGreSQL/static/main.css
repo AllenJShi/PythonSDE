@@ -42,3 +42,8 @@ html, body{
 .container p {
     margin: 100px;
 }
+
+.message {
+    font: 15px;
+    color: #72b4b4
+}
